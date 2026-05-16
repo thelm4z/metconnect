@@ -1,0 +1,124 @@
+body {
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto',
+    'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* ── Animations ── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-10px); }
+}
+
+@keyframes gradientShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Animation helpers ── */
+.animate-fade-in-up  { animation: fadeInUp 0.65s ease both; }
+.animate-fade-in     { animation: fadeIn   0.5s  ease both; }
+.animate-scale-in    { animation: scaleIn  0.5s  ease both; }
+.animate-float       { animation: float 3.5s ease-in-out infinite; }
+
+.delay-1 { animation-delay: 0.1s; }
+.delay-2 { animation-delay: 0.2s; }
+.delay-3 { animation-delay: 0.3s; }
+.delay-4 { animation-delay: 0.45s; }
+.delay-5 { animation-delay: 0.6s; }
+
+/* ── Gradient hero background ── */
+.hero-gradient {
+  background: linear-gradient(-45deg, #4338ca, #7c3aed, #2563eb, #4f46e5);
+  background-size: 400% 400%;
+  animation: gradientShift 10s ease infinite;
+}
+
+/* ── Card hover lift ── */
+.mentor-card {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  cursor: pointer;
+}
+.mentor-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 48px rgba(79, 70, 229, 0.18) !important;
+}
+
+/* ── Button hover ── */
+.btn-hover {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+}
+.btn-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(79, 70, 229, 0.38);
+}
+
+/* ── Skeleton shimmer ── */
+.skeleton {
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease infinite;
+  border-radius: 8px;
+}
+
+/* ── Smooth focus ring ── */
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: #4f46e5 !important;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12) !important;
+}
+
+/* ── Custom scrollbar ── */
+::-webkit-scrollbar              { width: 6px; }
+::-webkit-scrollbar-track        { background: #f1f5f9; }
+::-webkit-scrollbar-thumb        { background: #c7d2fe; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover  { background: #4f46e5; }
+
+/* ── Smooth link transitions ── */
+a { text-decoration: none; color: inherit; }
+
+/* ── Utility ── */
+.text-center { text-align: center; }
