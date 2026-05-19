@@ -15,5 +15,6 @@ urlpatterns = [
     path('api/reviews/', include('apps.reviews.urls')),
     path('api/verification/', include('apps.verification.urls')),
     path('api/chatbot/', include('apps.chatbot.urls')),
+    path('api/lessons/', include('apps.lessons.urls')),
     path('', lambda request: HttpResponseRedirect(settings.SITE_URL)),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

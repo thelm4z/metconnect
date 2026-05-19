@@ -30,6 +30,10 @@ class Verification(models.Model):
         self.save()
         self.mentor.is_verified = True
         self.mentor.save(update_fields=['is_verified'])
+        # Hesabı aktifleştir
+        user = self.mentor.user
+        user.is_active = True
+        user.save(update_fields=['is_active'])
 
     def reject(self, admin_note=''):
         from django.utils import timezone
@@ -39,3 +43,7 @@ class Verification(models.Model):
         self.save()
         self.mentor.is_verified = False
         self.mentor.save(update_fields=['is_verified'])
+        # Hesabı devre dışı bırak → login engellensin
+        user = self.mentor.user
+        user.is_active = False
+        user.save(update_fields=['is_active'])

@@ -63,6 +63,11 @@ class ChangePasswordSerializer(serializers.Serializer):
             raise serializers.ValidationError('Mevcut şifre yanlış.')
         return value
 
+    def validate(self, attrs):
+        if attrs.get('new_password') == attrs.get('current_password'):
+            raise serializers.ValidationError({'new_password': 'Yeni şifre mevcut şifreyle aynı olamaz.'})
+        return attrs
+
     def save(self):
         user = self.context['request'].user
         user.set_password(self.validated_data['new_password'])

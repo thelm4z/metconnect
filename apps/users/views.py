@@ -1,6 +1,7 @@
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import get_user_model
@@ -101,7 +102,37 @@ class ResendVerificationView(APIView):
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
-        return super().validate(attrs)
+        # is_active=False ise super() "credentials bulunamadı" der — önce kontrol et
+        from django.contrib.auth import get_user_model
+        UserModel = get_user_model()
+        username_field = self.username_field
+        try:
+            candidate = UserModel.objects.get(**{username_field: attrs.get(username_field, '')})
+            if not candidate.is_active:
+                if candidate.role == 'mentor':
+                    try:
+                        v = candidate.mentor_profile.verification
+                        if v.status == 'rejected':
+                            raise AuthenticationFailed(
+                                f'Mentor başvurunuz reddedildi. '
+                                f'Sebep: {v.admin_note or "Belirtilmedi"}. '
+                                'Detay için yönetici ile iletişime geçin.'
+                            )
+                    except AuthenticationFailed:
+                        raise
+                    except Exception:
+                        pass
+                raise AuthenticationFailed('Hesabınız devre dışı bırakılmıştır. Yönetici ile iletişime geçin.')
+        except UserModel.DoesNotExist:
+            pass
+
+        data = super().validate(attrs)
+
+        if not self.user.is_email_verified:
+            raise AuthenticationFailed(
+                'E-posta adresiniz doğrulanmamış. Lütfen e-postanıza gelen kodu girerek doğrulayın.'
+            )
+        return data
 
 
 class LoginView(TokenObtainPairView):

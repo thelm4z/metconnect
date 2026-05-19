@@ -11,6 +11,7 @@ ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(','
 SITE_URL = config('SITE_URL', default='http://localhost:3000')
 
 INSTALLED_APPS = [
+    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -28,6 +29,7 @@ INSTALLED_APPS = [
     'apps.reviews',
     'apps.verification',
     'apps.chatbot',
+    'apps.lessons',
 ]
 
 MIDDLEWARE = [
@@ -124,3 +126,86 @@ EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='Mentonnect <tthelm4z@gmail.com>')
+
+# ── Jazzmin Admin Teması ──────────────────────────────────────────────────────
+JAZZMIN_SETTINGS = {
+    "site_title": "Mentonnect Admin",
+    "site_header": "Mentonnect",
+    "site_brand": "Mentonnect",
+    "welcome_sign": "Mentonnect Yönetim Paneline Hoş Geldiniz",
+    "copyright": "Mentonnect © 2025",
+    "search_model": ["users.User", "mentors.MentorProfile", "lessons.LessonSession"],
+    "topmenu_links": [
+        {"name": "Siteye Dön", "url": "/", "new_window": True},
+        {"model": "users.User"},
+    ],
+    "usermenu_links": [
+        {"name": "Siteye Dön", "url": "/", "new_window": True},
+    ],
+    "show_sidebar": True,
+    "navigation_expanded": True,
+    "order_with_respect_to": [
+        "users", "mentors", "students", "verification", "reviews",
+        "messaging", "lessons",
+    ],
+    "icons": {
+        "auth": "fas fa-shield-alt",
+        "auth.Group": "fas fa-users-cog",
+        "users.User": "fas fa-users",
+        "users.SiteSettings": "fas fa-cog",
+        "users.EmailVerificationCode": "fas fa-envelope-open-text",
+        "mentors.MentorProfile": "fas fa-chalkboard-teacher",
+        "mentors.MentorTag": "fas fa-tags",
+        "students.StudentProfile": "fas fa-graduation-cap",
+        "verification.Verification": "fas fa-user-check",
+        "reviews.Review": "fas fa-star",
+        "messaging.Message": "fas fa-comments",
+        "lessons.LessonSession": "fas fa-book-open",
+    },
+    "default_icon_parents": "fas fa-folder",
+    "default_icon_children": "fas fa-circle",
+    "related_modal_active": True,
+    "custom_css": None,
+    "custom_js": None,
+    "use_google_fonts_cdn": True,
+    "show_ui_builder": False,
+    "changeform_format": "horizontal_tabs",
+    "changeform_format_overrides": {
+        "auth.user": "collapsible",
+        "users.user": "collapsible",
+    },
+    "language_chooser": False,
+}
+
+JAZZMIN_UI_TWEAKS = {
+    "navbar_small_text": False,
+    "footer_small_text": False,
+    "body_small_text": False,
+    "brand_small_text": False,
+    "brand_colour": "navbar-indigo",
+    "accent": "accent-indigo",
+    "navbar": "navbar-dark",
+    "no_navbar_border": True,
+    "navbar_fixed": True,
+    "layout_boxed": False,
+    "footer_fixed": False,
+    "sidebar_fixed": True,
+    "sidebar": "sidebar-dark-indigo",
+    "sidebar_nav_small_text": False,
+    "sidebar_disable_expand": False,
+    "sidebar_nav_child_indent": True,
+    "sidebar_nav_compact_style": True,
+    "sidebar_nav_legacy_style": False,
+    "sidebar_nav_flat_style": False,
+    "theme": "default",
+    "dark_mode_theme": None,
+    "button_classes": {
+        "primary": "btn-primary",
+        "secondary": "btn-secondary",
+        "info": "btn-outline-info",
+        "warning": "btn-warning",
+        "danger": "btn-danger",
+        "success": "btn-success",
+    },
+    "actions_sticky_top": True,
+}

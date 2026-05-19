@@ -18,6 +18,7 @@ export default function Login() {
   const [selectedRole, setSelectedRole] = useState('student');
   const [form, setForm] = useState({ username: '', password: '' });
   const [error, setError] = useState('');
+  const [emailNotVerified, setEmailNotVerified] = useState(false);
   const [loading, setLoading] = useState(false);
   const [failCount, setFailCount] = useState(0);
   const { user, login } = useAuth();
@@ -27,6 +28,15 @@ export default function Login() {
   useEffect(() => {
     if (user) navigate('/');
   }, [user, navigate]);
+
+  // Hata mesajını 6 saniye sonra otomatik kapat
+  
+  useEffect(() => {
+    if (!error) return;
+    setEmailNotVerified(false);
+    const t = setTimeout(() => setError(''), 6000);
+    return () => clearTimeout(t);
+  }, [error]);
 
   const handle = e => setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -73,7 +83,10 @@ export default function Login() {
       const newFail = failCount + 1;
       setFailCount(newFail);
       let msg = typeof detail === 'string' ? detail : 'Kullanıcı adı veya şifre hatalı.';
-      if (newFail >= 3) msg += ` (${newFail}. hatalı deneme — şifrenizi kontrol edin)`;
+      if (typeof detail === 'string' && detail.includes('doğrulanmamış')) {
+        setEmailNotVerified(true);
+      }
+      if (newFail >= 3 && !detail?.includes('doğrulanmamış')) msg += ` (${newFail}. hatalı deneme — şifrenizi kontrol edin)`;
       setError(msg);
     } finally {
       setLoading(false);
@@ -137,7 +150,20 @@ export default function Login() {
           )}
 
           {error && (
-            <div style={s.errorBox}><span>⚠️</span> {error}</div>
+            <div style={s.errorBox}>
+              <span>⚠️</span>
+              <span>
+                {error}
+                {emailNotVerified && (
+                  <span>
+                    {' '}&rarr;{' '}
+                    <Link to="/verify-email" style={{ color: '#dc2626', fontWeight: '700' }}>
+                      Doğrulama sayfasına git
+                    </Link>
+                  </span>
+                )}
+              </span>
+            </div>
           )}
 
           <form onSubmit={submit}>

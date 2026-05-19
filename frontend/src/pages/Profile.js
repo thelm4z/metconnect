@@ -110,6 +110,10 @@ export default function Profile() {
       setPasswordMsg({ type: 'error', text: 'Yeni şifre en az 6 karakter olmalıdır.' });
       return;
     }
+    if (passwordForm.new_password === passwordForm.current_password) {
+      setPasswordMsg({ type: 'error', text: 'Yeni şifre mevcut şifreyle aynı olamaz.' });
+      return;
+    }
     setLoadingPassword(true);
     try {
       await API.post('/auth/change-password/', {

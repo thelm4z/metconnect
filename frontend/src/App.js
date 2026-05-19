@@ -10,6 +10,8 @@ import About from './pages/About';
 import Contact from './pages/Contact';
 import AdminPanel from './pages/AdminPanel';
 import Messages from './pages/Messages';
+import Lessons from './pages/Lessons';
+import LessonRoom from './pages/LessonRoom';
 import ChatBot from './components/ChatBot';
 
 export default function App() {
@@ -27,6 +29,8 @@ export default function App() {
           <Route path='/contact' element={<Contact />} />
           <Route path='/admin-panel' element={<AdminPanel />} />
           <Route path='/messages' element={<Messages />} />
+          <Route path='/lessons' element={<Lessons />} />
+          <Route path='/lessons/room/:code' element={<LessonRoom />} />
         </Routes>
         <ChatBot />
       </BrowserRouter>

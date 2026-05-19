@@ -40,6 +40,7 @@ export default function Navbar() {
     ['/about', 'Hakkımızda'],
     ['/contact', 'İletişim'],
     ...(user ? [['/messages', '💬 Sohbetler', unreadCount]] : []),
+    ...(user ? [['/lessons', '📚 Dersler']] : []),
     ...(user?.is_staff ? [['/admin-panel', '🛡️ Admin']] : []),
   ];
 
