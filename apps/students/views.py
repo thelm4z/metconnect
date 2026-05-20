@@ -10,18 +10,12 @@ class MyStudentProfileView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        try:
-            profile = request.user.student_profile
-        except StudentProfile.DoesNotExist:
-            return Response({'detail': 'Öğrenci profili bulunamadı.'}, status=status.HTTP_404_NOT_FOUND)
+        profile, _ = StudentProfile.objects.get_or_create(user=request.user)
         serializer = StudentProfileSerializer(profile)
         return Response(serializer.data)
 
     def patch(self, request):
-        try:
-            profile = request.user.student_profile
-        except StudentProfile.DoesNotExist:
-            return Response({'detail': 'Öğrenci profili bulunamadı.'}, status=status.HTTP_404_NOT_FOUND)
+        profile, _ = StudentProfile.objects.get_or_create(user=request.user)
         serializer = StudentProfileSerializer(profile, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()

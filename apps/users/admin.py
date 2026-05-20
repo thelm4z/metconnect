@@ -1,6 +1,10 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.utils.html import format_html
+from django.urls import path
+from django.shortcuts import render
+from django.contrib.admin.views.decorators import staff_member_required
+from django.utils.decorators import method_decorator
 from .models import User, EmailVerificationCode, SiteSettings
 
 
@@ -15,6 +19,97 @@ class EmailVerificationInline(admin.TabularInline):
 
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
+
+    def get_urls(self):
+        urls = super().get_urls()
+        extra = [
+            path('security-logs/', self.admin_site.admin_view(self._security_logs_view), name='security_logs'),
+        ]
+        return extra + urls
+
+    def _security_logs_view(self, request):
+        import re
+        from django.conf import settings as djsettings
+
+        log_file = djsettings.BASE_DIR / 'logs' / 'security.log'
+
+        LINE_RE  = re.compile(r'^\[(?P<ts>[^\]]+)\]\s+(?P<level>\w+)\s+\S+:\s+(?P<body>.+)$')
+        IP_RE    = re.compile(r'\bip=(\S+)')
+        PATH_RE  = re.compile(r'\bpath=(\S+)')
+        REASON_RE = re.compile(r'\breason=(\S+)')
+
+        level_filter = request.GET.get('level', '').upper()
+        event_filter = request.GET.get('event', '').upper()
+        search       = request.GET.get('q', '').lower()
+
+        entries = []
+        total_lines = 0
+        error_msg = None
+
+        try:
+            with open(log_file, encoding='utf-8', errors='replace') as f:
+                raw_lines = [l.strip() for l in f if l.strip()]
+            total_lines = len(raw_lines)
+
+            for line in reversed(raw_lines):
+                m = LINE_RE.match(line)
+                if not m:
+                    continue
+                ts    = m.group('ts')
+                level = m.group('level')
+                body  = m.group('body')
+
+                parts = body.split(None, 1)
+                event_type = parts[0] if parts else body
+                rest       = parts[1] if len(parts) > 1 else ''
+
+                if level_filter and level != level_filter:
+                    continue
+                if event_filter and event_type != event_filter:
+                    continue
+
+                ip_m  = IP_RE.search(rest)
+                p_m   = PATH_RE.search(rest)
+                rs_m  = REASON_RE.search(rest)
+
+                entry = {
+                    'timestamp':  ts,
+                    'level':      level,
+                    'event_type': event_type,
+                    'ip':         ip_m.group(1)  if ip_m  else '—',
+                    'path':       p_m.group(1)   if p_m   else '—',
+                    'reason':     rs_m.group(1)  if rs_m  else '—',
+                    'raw':        line,
+                }
+
+                if search and not any(search in str(v).lower() for v in entry.values()):
+                    continue
+
+                entries.append(entry)
+
+        except FileNotFoundError:
+            error_msg = 'Log dosyası bulunamadı: ' + str(log_file)
+        except Exception as e:
+            error_msg = str(e)
+
+        attacks  = sum(1 for e in entries if e['event_type'] == 'ATTACK_DETECTED')
+        ratelim  = sum(1 for e in entries if e['event_type'] in ('RATE_LIMIT', 'LOGIN_LOCKOUT'))
+
+        return render(request, 'admin/users/security_logs.html', {
+            'title':        'Güvenlik Logları',
+            'opts':         self.model._meta,
+            'entries':      entries,
+            'total_lines':  total_lines,
+            'shown':        len(entries),
+            'attacks':      attacks,
+            'ratelimit':    ratelim,
+            'error_msg':    error_msg,
+            'level_filter': level_filter,
+            'event_filter': event_filter,
+            'search':       search,
+        })
+
+
     list_display = [
         'username', 'email', 'full_name', 'role_badge',
         'is_active_icon', 'email_verified_icon', 'is_staff', 'date_joined',

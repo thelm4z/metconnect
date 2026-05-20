@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../api';
 import { useAuth } from '../AuthContext';
@@ -7,6 +7,8 @@ import Navbar from '../components/Navbar';
 const TABS = [
   { key: 'applications', label: '📋 Başvurular' },
   { key: 'users',        label: '👥 Kullanıcılar' },
+  { key: 'reviews',      label: '⭐ Yorumlar' },
+  { key: 'logs',         label: '🔒 Güvenlik Logları' },
   { key: 'settings',     label: '⚙️ Site Ayarları' },
 ];
 
@@ -60,6 +62,8 @@ export default function AdminPanel() {
       <div style={s.body}>
         {activeTab === 'applications' && <ApplicationsTab showToast={showToast} />}
         {activeTab === 'users'        && <UsersTab showToast={showToast} />}
+        {activeTab === 'reviews'      && <ReviewsTab showToast={showToast} />}
+        {activeTab === 'logs'         && <SecurityLogsTab />}
         {activeTab === 'settings'     && <SettingsTab showToast={showToast} />}
       </div>
     </div>
@@ -399,6 +403,280 @@ function UsersTab({ showToast }) {
   );
 }
 
+/* ─── YORUMLAR SEKMESİ ──────────────────────────────────────────────── */
+function ReviewsTab({ showToast }) {
+  const [reviews, setReviews] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [deleteModal, setDeleteModal] = useState(null);
+  const [processing, setProcessing] = useState(false);
+
+  const fetchReviews = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await API.get('/reviews/admin/all/');
+      setReviews(res.data.results || res.data);
+    } catch {
+      showToast('error', 'Yorumlar yüklenemedi.');
+    } finally {
+      setLoading(false);
+    }
+  }, [showToast]);
+
+  useEffect(() => { fetchReviews(); }, [fetchReviews]);
+
+  const confirmDelete = async () => {
+    if (!deleteModal) return;
+    setProcessing(true);
+    try {
+      await API.delete(`/reviews/admin/${deleteModal.id}/delete/`);
+      showToast('success', 'Yorum silindi.');
+      setReviews(prev => prev.filter(r => r.id !== deleteModal.id));
+      setDeleteModal(null);
+    } catch {
+      showToast('error', 'Yorum silinemedi.');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const STARS = { 1: '#ef4444', 2: '#f97316', 3: '#f59e0b', 4: '#84cc16', 5: '#22c55e' };
+
+  return (
+    <>
+      {deleteModal && (
+        <div style={s.overlay} onClick={() => setDeleteModal(null)}>
+          <div style={s.modal} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: '48px', textAlign: 'center', marginBottom: '1rem' }}>🗑️</div>
+            <h2 style={s.modalTitle}>Yorumu silmek istediğine emin misin?</h2>
+            <p style={s.modalSub}>
+              <strong>{deleteModal.student_name}</strong> tarafından yazılan yorum kalıcı olarak silinecek.
+            </p>
+            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}>
+              <button style={s.modalCancelBtn} onClick={() => setDeleteModal(null)}>Vazgeç</button>
+              <button style={{ ...s.modalConfirmBtn, background: '#dc2626' }} onClick={confirmDelete} disabled={processing}>
+                {processing ? 'Siliniyor...' : 'Evet, Sil'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+        <SectionTitle icon="⭐" title="Tüm Yorumlar" count={reviews.length} />
+        <button style={s.refreshBtnSmall} onClick={fetchReviews}>↻ Yenile</button>
+      </div>
+
+      {loading ? (
+        <Empty msg="Yükleniyor..." />
+      ) : reviews.length === 0 ? (
+        <Empty msg="Henüz yorum yok." />
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {reviews.map(r => (
+            <div key={r.id} style={s.card}>
+              <div style={s.cardTop}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px', flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: '700', color: '#1e293b', fontSize: '14px' }}>
+                      🎓 {r.student_username || r.student}
+                    </span>
+                    <span style={{ color: '#94a3b8', fontSize: '13px' }}>→</span>
+                    <span style={{ fontWeight: '600', color: '#4f46e5', fontSize: '14px' }}>
+                      👨‍💼 {r.mentor_name || r.mentor}
+                    </span>
+                    <span style={{ color: STARS[r.rating] || '#f59e0b', fontSize: '16px', letterSpacing: '1px' }}>
+                      {'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}
+                    </span>
+                    <span style={{ fontSize: '12px', color: '#94a3b8' }}>
+                      {r.rating}/5
+                    </span>
+                  </div>
+                  {r.comment ? (
+                    <p style={{ color: '#374151', fontSize: '13px', margin: 0, lineHeight: '1.6' }}>{r.comment}</p>
+                  ) : (
+                    <p style={{ color: '#94a3b8', fontSize: '13px', margin: 0, fontStyle: 'italic' }}>Yorum yazılmamış</p>
+                  )}
+                  <div style={s.cardMeta}>
+                    📅 {new Date(r.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </div>
+                </div>
+                <button
+                  style={{ ...s.deleteBtn, alignSelf: 'flex-start' }}
+                  onClick={() => setDeleteModal({ id: r.id, student_name: r.student_username || r.student })}
+                  title="Yorumu Sil"
+                >
+                  🗑️
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+/* ─── GÜVENLİK LOGLARI SEKMESİ ─────────────────────────────────────── */
+const EVENT_COLORS = {
+  ATTACK_DETECTED: { bg: '#fef2f2', color: '#dc2626', label: '🚨 Saldırı' },
+  LOGIN_LOCKOUT:   { bg: '#fef3c7', color: '#d97706', label: '🔒 Kilit' },
+  RATE_LIMIT:      { bg: '#eff6ff', color: '#2563eb', label: '⚡ Rate Limit' },
+};
+
+function SecurityLogsTab() {
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [eventFilter, setEventFilter] = useState('');
+  const [stats, setStats] = useState({ attacks: 0, ratelimit: 0, total: 0, shown: 0 });
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const intervalRef = useRef(null);
+
+  const fetchLogs = useCallback(async () => {
+    try {
+      let url = '/auth/admin/logs/';   // limit yok → tüm kayıtlar
+      if (eventFilter) url += `?event=${eventFilter}`;
+      const res = await API.get(url);
+      const entries = res.data.entries || [];
+      setLogs(entries);
+      setStats({
+        attacks:  entries.filter(e => e.event_type === 'ATTACK_DETECTED').length,
+        ratelimit: entries.filter(e => ['RATE_LIMIT','LOGIN_LOCKOUT'].includes(e.event_type)).length,
+        total:    res.data.total || entries.length,
+        shown:    res.data.shown || entries.length,
+      });
+    } catch {
+      // sessizce geç
+    } finally {
+      setLoading(false);
+    }
+  }, [eventFilter]);
+
+  useEffect(() => { fetchLogs(); }, [fetchLogs]);
+
+  useEffect(() => {
+    if (autoRefresh) {
+      intervalRef.current = setInterval(fetchLogs, 15000);
+    } else {
+      clearInterval(intervalRef.current);
+    }
+    return () => clearInterval(intervalRef.current);
+  }, [autoRefresh, fetchLogs]);
+
+  const filtered = logs.filter(e => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      e.ip.includes(q) ||
+      e.path.toLowerCase().includes(q) ||
+      (e.reason || '').toLowerCase().includes(q) ||
+      (e.raw || '').toLowerCase().includes(q)
+    );
+  });
+
+  return (
+    <>
+      {/* İstatistik kartları */}
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+        {[
+          { label: 'Saldırı Tespiti', value: stats.attacks, color: '#dc2626', bg: '#fef2f2', icon: '🚨' },
+          { label: 'Rate Limit / Kilit', value: stats.ratelimit, color: '#d97706', bg: '#fef3c7', icon: '⚡' },
+          { label: 'Toplam Kayıt (Dosya)', value: stats.total, color: '#4f46e5', bg: '#eef2ff', icon: '📋' },
+        ].map(st => (
+          <div key={st.label} style={{ flex: 1, minWidth: '140px', background: st.bg, borderRadius: '12px', padding: '1rem 1.25rem', border: `1px solid ${st.color}22` }}>
+            <div style={{ fontSize: '28px', fontWeight: '800', color: st.color }}>{st.value}</div>
+            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>{st.icon} {st.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Filtre toolbar */}
+      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <input
+          style={{ ...sLog.input, flex: 1, minWidth: '180px' }}
+          placeholder="IP adresi veya path ara..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+        <select style={sLog.select} value={eventFilter} onChange={e => setEventFilter(e.target.value)}>
+          <option value="">Tüm Olaylar</option>
+          <option value="ATTACK_DETECTED">Saldırı Tespiti</option>
+          <option value="LOGIN_LOCKOUT">Login Kilidi</option>
+          <option value="RATE_LIMIT">Rate Limit</option>
+        </select>
+        <button style={sLog.refreshBtn} onClick={fetchLogs}>↻ Yenile</button>
+        <button
+          style={{ ...sLog.refreshBtn, background: autoRefresh ? '#eef2ff' : '#f1f5f9', color: autoRefresh ? '#4f46e5' : '#64748b', borderColor: autoRefresh ? '#4f46e5' : '#e2e8f0' }}
+          onClick={() => setAutoRefresh(v => !v)}
+          title="15 saniyede bir otomatik yenileme"
+        >
+          {autoRefresh ? '🟢 Canlı' : '⏸ Durdur'}
+        </button>
+      </div>
+
+      {/* Log tablosu */}
+      {loading ? (
+        <Empty msg="Loglar yükleniyor..." />
+      ) : filtered.length === 0 ? (
+        <Empty msg="Log kaydı bulunamadı." />
+      ) : (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={sLog.table}>
+            <thead>
+              <tr>
+                {['Zaman', 'Olay', 'IP Adresi', 'Path', 'Sebep', 'Ham Kayıt'].map(h => (
+                  <th key={h} style={sLog.th}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((e, i) => {
+                const ev = EVENT_COLORS[e.event_type] || { bg: '#f1f5f9', color: '#64748b', label: e.event_type };
+                return (
+                  <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                    <td style={{ ...sLog.td, whiteSpace: 'nowrap', color: '#64748b', fontSize: '12px' }}>
+                      {e.timestamp}
+                    </td>
+                    <td style={{ ...sLog.td, whiteSpace: 'nowrap' }}>
+                      <span style={{ background: ev.bg, color: ev.color, padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: '700' }}>
+                        {ev.label || e.event_type}
+                      </span>
+                    </td>
+                    <td style={{ ...sLog.td, fontFamily: 'monospace', color: '#dc2626', fontWeight: '700', whiteSpace: 'nowrap' }}>
+                      {e.ip}
+                    </td>
+                    <td style={{ ...sLog.td, fontFamily: 'monospace', fontSize: '12px', color: '#2563eb', wordBreak: 'break-all', minWidth: '160px' }}>
+                      {e.path}
+                    </td>
+                    <td style={{ ...sLog.td, fontSize: '12px', color: '#374151', wordBreak: 'break-all', minWidth: '140px' }}>
+                      {e.reason}
+                    </td>
+                    <td style={{ ...sLog.td, fontFamily: 'monospace', fontSize: '11px', color: '#64748b', wordBreak: 'break-all', minWidth: '300px' }}>
+                      {e.raw}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <div style={{ textAlign: 'right', fontSize: '12px', color: '#94a3b8', marginTop: '8px' }}>
+            {filtered.length} kayıt gösteriliyor {autoRefresh ? '· 15s otomatik yenileme aktif' : ''}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+const sLog = {
+  input: { padding: '0.6rem 0.9rem', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', fontFamily: "'Inter', sans-serif", outline: 'none' },
+  select: { padding: '0.6rem 0.9rem', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', fontFamily: "'Inter', sans-serif", background: '#fff' },
+  refreshBtn: { padding: '0.6rem 1rem', background: '#f1f5f9', color: '#64748b', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: "'Inter', sans-serif", whiteSpace: 'nowrap' },
+  table: { width: '100%', borderCollapse: 'collapse', fontSize: '13px', border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' },
+  th: { background: '#1e293b', color: '#e2e8f0', padding: '10px 14px', textAlign: 'left', fontWeight: '700', fontSize: '12px', whiteSpace: 'nowrap' },
+  td: { padding: '9px 14px', borderBottom: '1px solid #f1f5f9' },
+};
+
 /* ─── SİTE AYARLARI SEKMESİ ──────────────────────────────────────────── */
 function SettingsTab({ showToast }) {
   const [form, setForm] = useState(null);
@@ -559,6 +837,7 @@ const s = {
   rolePill: { padding: '3px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: '600', display: 'inline-block' },
   editBtn: { padding: '0.35rem 0.65rem', background: '#eef2ff', color: '#4f46e5', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '14px' },
   deleteBtn: { padding: '0.35rem 0.65rem', background: '#fef2f2', color: '#dc2626', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '14px' },
+  refreshBtnSmall: { background: 'none', border: '1.5px solid #e2e8f0', color: '#64748b', padding: '0.35rem 0.9rem', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: "'Inter', sans-serif" },
   searchInput: { padding: '0.6rem 1rem', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', fontFamily: "'Inter', sans-serif", outline: 'none', minWidth: '220px' },
 
   /* Settings */

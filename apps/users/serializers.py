@@ -1,12 +1,13 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model, authenticate
 from .models import SiteSettings
+from mentonnect.validators import validate_safe_text, validate_username
 
 User = get_user_model()
 
 
 class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, min_length=6)
+    password = serializers.CharField(write_only=True, min_length=8)
     cv_file = serializers.FileField(write_only=True, required=False)
     extra_note = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
@@ -14,9 +15,25 @@ class RegisterSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'password', 'cv_file', 'extra_note']
 
+    def validate_username(self, value):
+        return validate_username(value)
+
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
             raise serializers.ValidationError('Bu e-posta adresi zaten kullanılıyor.')
+        return value
+
+    def validate_first_name(self, value):
+        return validate_safe_text(value, max_length=100, field_name='Ad')
+
+    def validate_last_name(self, value):
+        return validate_safe_text(value, max_length=100, field_name='Soyad')
+
+    def validate_password(self, value):
+        if value.isdigit():
+            raise serializers.ValidationError('Şifre yalnızca rakamlardan oluşamaz.')
+        if len(set(value)) < 4:
+            raise serializers.ValidationError('Şifre çok basit. Lütfen daha karmaşık bir şifre seçin.')
         return value
 
     def create(self, validated_data):

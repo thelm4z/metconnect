@@ -34,6 +34,14 @@ class MentorProfileSerializer(serializers.ModelSerializer):
             MentorTag.objects.get_or_create(mentor=mentor, name=name.lower().strip())
         return mentor
 
+    def validate_bio(self, value):
+        from mentonnect.validators import validate_safe_text
+        return validate_safe_text(value, max_length=2000, field_name='Biyografi')
+
+    def validate_linkedin_url(self, value):
+        from mentonnect.validators import validate_url
+        return validate_url(value)
+
     def update(self, instance, validated_data):
         tag_names = validated_data.pop('tag_names', None)
         for attr, value in validated_data.items():

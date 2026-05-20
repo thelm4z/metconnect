@@ -11,6 +11,12 @@ class ReviewSerializer(serializers.ModelSerializer):
                   'rating', 'comment', 'created_at']
         read_only_fields = ['id', 'student', 'created_at']
 
+    def validate_comment(self, value):
+        from mentonnect.validators import validate_safe_text
+        if value:
+            return validate_safe_text(value, max_length=1000, field_name='Yorum')
+        return value
+
     def validate(self, attrs):
         request = self.context['request']
         mentor = attrs.get('mentor')

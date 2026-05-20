@@ -35,6 +35,11 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    # ── Güvenlik katmanları (erken çalışır) ──
+    'mentonnect.security_middleware.RateLimitMiddleware',
+    'mentonnect.security_middleware.InputSanitizationMiddleware',
+    'mentonnect.security_middleware.SecurityHeadersMiddleware',
+    # ──────────────────────────────────────────
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -127,6 +132,72 @@ EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='Mentonnect <tthelm4z@gmail.com>')
 
+# ── Güvenlik Ayarları ─────────────────────────────────────────────────────────
+
+# Clickjacking koruması
+X_FRAME_OPTIONS = 'DENY'
+
+# MIME sniffing koruması
+SECURE_CONTENT_TYPE_NOSNIFF = True
+
+# Session güvenliği
+SESSION_COOKIE_HTTPONLY = True       # JS ile session cookie okunamaz
+SESSION_COOKIE_SAMESITE = 'Lax'     # CSRF saldırılarına karşı
+SESSION_COOKIE_AGE = 3600 * 8       # 8 saat
+
+# CSRF güvenliği
+CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_HTTPONLY = False         # Frontend'in CSRF token okuması için False
+
+# Password validators — güçlü şifre zorunluluğu
+AUTH_PASSWORD_VALIDATORS = [
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {'min_length': 8},
+    },
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+]
+
+# Loglama — güvenlik olayları için
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'security': {
+            'format': '[%(asctime)s] %(levelname)s %(name)s: %(message)s',
+            'datefmt': '%Y-%m-%d %H:%M:%S',
+        },
+    },
+    'handlers': {
+        'security_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'security.log',
+            'maxBytes': 5 * 1024 * 1024,  # 5 MB
+            'backupCount': 5,
+            'formatter': 'security',
+            'encoding': 'utf-8',
+        },
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'security',
+        },
+    },
+    'loggers': {
+        'mentonnect.security_middleware': {
+            'handlers': ['security_file', 'console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'django.security': {
+            'handlers': ['security_file'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+    },
+}
+
 # ── Jazzmin Admin Teması ──────────────────────────────────────────────────────
 JAZZMIN_SETTINGS = {
     "site_title": "Mentonnect Admin",
@@ -138,6 +209,7 @@ JAZZMIN_SETTINGS = {
     "topmenu_links": [
         {"name": "Siteye Dön", "url": "/", "new_window": True},
         {"model": "users.User"},
+        {"name": "🔒 Güvenlik Logları", "url": "/admin/users/user/security-logs/", "new_window": False},
     ],
     "usermenu_links": [
         {"name": "Siteye Dön", "url": "/", "new_window": True},

@@ -53,21 +53,36 @@ class ChatView(APIView):
             elif role == 'assistant' and content:
                 gemini_history.append(types.Content(role='model', parts=[types.Part(text=content)]))
 
-        try:
-            client = genai.Client(api_key=api_key)
-            chat = client.chats.create(
-                model='gemini-2.5-flash',
-                config=types.GenerateContentConfig(
-                    system_instruction=SYSTEM_PROMPT,
-                    max_output_tokens=512,
-                ),
-                history=gemini_history,
-            )
-            response = chat.send_message(message)
-            reply = response.text
-            return Response({'reply': reply})
-        except Exception:
+        MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash']
+        last_error = None
+
+        for model_name in MODELS:
+            try:
+                client = genai.Client(api_key=api_key)
+                chat = client.chats.create(
+                    model=model_name,
+                    config=types.GenerateContentConfig(
+                        system_instruction=SYSTEM_PROMPT,
+                        max_output_tokens=512,
+                    ),
+                    history=gemini_history,
+                )
+                response = chat.send_message(message)
+                reply = response.text
+                return Response({'reply': reply})
+            except Exception as e:
+                last_error = str(e)
+                if '403' in last_error or 'API key' in last_error or 'PERMISSION_DENIED' in last_error:
+                    # API anahtarı sorunu → diğer modeli denemeye gerek yok
+                    break
+                continue
+
+        if last_error and ('API key' in last_error or '403' in last_error or 'PERMISSION_DENIED' in last_error):
             return Response(
-                {'error': 'Asistan şu an yanıt veremiyor. Lütfen tekrar deneyin.'},
-                status=status.HTTP_502_BAD_GATEWAY
+                {'error': 'API anahtarı geçersiz veya süresi dolmuş. Lütfen yöneticiyle iletişime geçin.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
+        return Response(
+            {'error': 'Asistan şu an yanıt veremiyor. Lütfen tekrar deneyin.'},
+            status=status.HTTP_502_BAD_GATEWAY,
+        )

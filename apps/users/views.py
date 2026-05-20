@@ -49,6 +49,9 @@ class RegisterView(generics.CreateAPIView):
                     cv_file=cv_file,
                     extra_note=extra_note,
                 )
+        else:
+            from apps.students.models import StudentProfile
+            StudentProfile.objects.get_or_create(user=user)
 
 
 class VerifyEmailView(APIView):
@@ -190,6 +193,114 @@ class AdminUserDetailView(generics.RetrieveUpdateDestroyAPIView):
             return Response({'detail': 'Kendi hesabınızı silemezsiniz.'}, status=status.HTTP_400_BAD_REQUEST)
         user.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ContactFormView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        name = request.data.get('name', '').strip()
+        email = request.data.get('email', '').strip()
+        subject = request.data.get('subject', '').strip()
+        message = request.data.get('message', '').strip()
+
+        if not all([name, email, message]):
+            return Response({'detail': 'Ad, e-posta ve mesaj zorunludur.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            send_mail(
+                subject=f'[Mentonnect İletişim] {subject or "Genel Mesaj"}',
+                message=(
+                    f'Gönderen: {name}\n'
+                    f'E-posta: {email}\n'
+                    f'Konu: {subject}\n'
+                    f'---\n'
+                    f'{message}'
+                ),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[settings.DEFAULT_FROM_EMAIL],
+                fail_silently=False,
+            )
+            return Response({'detail': 'Mesajınız alındı, en kısa sürede dönüş yapacağız.'})
+        except Exception:
+            return Response(
+                {'detail': 'Mesaj gönderilemedi. Lütfen daha sonra tekrar deneyin.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+
+class AdminLogsView(APIView):
+    """Güvenlik loglarını JSON olarak döner — sadece admin."""
+    permission_classes = [permissions.IsAdminUser]
+
+    LOG_FILE = settings.BASE_DIR / 'logs' / 'security.log'
+    # [2026-05-20 03:12:52] WARNING logger.name: BODY
+    _LINE_RE = __import__('re').compile(
+        r'^\[(?P<ts>[^\]]+)\]\s+(?P<level>\w+)\s+\S+:\s+(?P<body>.+)$'
+    )
+    # ip=127.0.0.1  path=/api/...  reason=attack_pattern:content
+    _IP_RE    = __import__('re').compile(r'\bip=(\S+)')
+    _PATH_RE  = __import__('re').compile(r'\bpath=(\S+)')
+    _REASON_RE = __import__('re').compile(r'\breason=(\S+)')
+
+    def get(self, request):
+        level_filter = request.query_params.get('level', '').upper()
+        event_filter = request.query_params.get('event', '').upper()
+        # Limit: varsayilan tum kayitlar (0 = hepsi)
+        raw_limit = request.query_params.get('limit', '0')
+        try:
+            limit = int(raw_limit)
+        except ValueError:
+            limit = 0
+
+        entries = []
+        try:
+            with open(self.LOG_FILE, encoding='utf-8', errors='replace') as f:
+                lines = f.readlines()
+        except FileNotFoundError:
+            return Response({'entries': [], 'total': 0})
+
+        real_lines = [l.strip() for l in lines if l.strip()]
+
+        for line in reversed(real_lines):
+            m = self._LINE_RE.match(line)
+            if not m:
+                continue
+            ts    = m.group('ts')
+            level = m.group('level')
+            body  = m.group('body')
+
+            parts = body.split(None, 1)
+            event_type = parts[0] if parts else body
+            rest       = parts[1] if len(parts) > 1 else ''
+
+            if level_filter and level != level_filter:
+                continue
+            if event_filter and event_type != event_filter:
+                continue
+
+            # Her alanı tam olarak çıkar (= içeren değerler için özel regex)
+            ip_m    = self._IP_RE.search(rest)
+            path_m  = self._PATH_RE.search(rest)
+            rsn_m   = self._REASON_RE.search(rest)
+
+            entries.append({
+                'timestamp':  ts,
+                'level':      level,
+                'event_type': event_type,
+                'ip':         ip_m.group(1)   if ip_m   else '—',
+                'path':       path_m.group(1) if path_m else '—',
+                'reason':     rsn_m.group(1)  if rsn_m  else '—',
+                'raw':        line,            # tam ham satır
+            })
+            if limit and len(entries) >= limit:
+                break
+
+        return Response({
+            'entries': entries,
+            'total':   len(real_lines),
+            'shown':   len(entries),
+        })
 
 
 class SiteSettingsView(APIView):

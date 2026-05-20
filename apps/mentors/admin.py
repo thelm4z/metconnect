@@ -65,9 +65,10 @@ class MentorProfileAdmin(admin.ModelAdmin):
     @admin.display(description='Ortalama Puan')
     def avg_rating_stars(self, obj):
         stars = '★' * int(round(obj.avg_rating)) + '☆' * (5 - int(round(obj.avg_rating)))
+        avg_str = f'{obj.avg_rating:.1f}'
         return format_html(
-            '<span style="color:#f59e0b;letter-spacing:1px">{}</span> <small style="color:#64748b">({:.1f})</small>',
-            stars, obj.avg_rating
+            '<span style="color:#f59e0b;letter-spacing:1px">{}</span> <small style="color:#64748b">({}/5)</small>',
+            stars, avg_str
         )
 
     @admin.display(description='Etiketler')

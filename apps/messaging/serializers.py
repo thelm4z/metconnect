@@ -12,11 +12,10 @@ class MessageSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'sender', 'is_read', 'sent_at']
 
     def validate_content(self, value):
+        from mentonnect.validators import validate_safe_text
         if not value or not value.strip():
             raise serializers.ValidationError('Mesaj içeriği boş olamaz.')
-        if len(value.strip()) > 2000:
-            raise serializers.ValidationError('Mesaj en fazla 2000 karakter olabilir.')
-        return value.strip()
+        return validate_safe_text(value.strip(), max_length=2000, field_name='Mesaj')
 
     def validate(self, attrs):
         request = self.context.get('request')

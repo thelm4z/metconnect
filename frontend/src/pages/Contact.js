@@ -19,13 +19,15 @@ export default function Contact() {
     setLoading(true);
     setError('');
     try {
-      await API.post('/chatbot/', {
-        message: `İLETİŞİM FORMU\nAd: ${form.name}\nE-posta: ${form.email}\nKonu: ${form.subject}\nMesaj: ${form.message}`,
-        history: [],
+      await API.post('/auth/contact/', {
+        name: form.name,
+        email: form.email,
+        subject: form.subject,
+        message: form.message,
       });
       setSent(true);
-    } catch {
-      setError('Mesajınız gönderilemedi. Lütfen tekrar deneyin veya destek@mentonnect.com adresine e-posta gönderin.');
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Mesajınız gönderilemedi. Lütfen tekrar deneyin.');
     } finally {
       setLoading(false);
     }

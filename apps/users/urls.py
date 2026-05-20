@@ -3,6 +3,7 @@ from .views import (
     RegisterView, LoginView, MeView,
     VerifyEmailView, ResendVerificationView, ChangePasswordView,
     AdminUserListView, AdminUserDetailView, SiteSettingsView,
+    ContactFormView, AdminLogsView,
 )
 
 urlpatterns = [
@@ -12,7 +13,9 @@ urlpatterns = [
     path('verify-email/', VerifyEmailView.as_view(), name='verify-email'),
     path('resend-verification/', ResendVerificationView.as_view(), name='resend-verification'),
     path('change-password/', ChangePasswordView.as_view(), name='change-password'),
+    path('contact/', ContactFormView.as_view(), name='contact'),
     path('admin/users/', AdminUserListView.as_view(), name='admin-users'),
     path('admin/users/<int:pk>/', AdminUserDetailView.as_view(), name='admin-user-detail'),
     path('admin/settings/', SiteSettingsView.as_view(), name='site-settings'),
+    path('admin/logs/', AdminLogsView.as_view(), name='admin-logs'),
 ]
